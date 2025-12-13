@@ -1,9 +1,10 @@
-import express from "express"
-import http from "http"
-import { initApiServer } from "./api/apiServer.js"
-import { initWebSockets } from "./sockets/socketServer.js"
+import express from "express";
+import http from "http";
+import "dotenv/config";
+import { initApiServer } from "./api/apiServer.js";
+import { initWebSockets } from "./sockets/socketServer.js";
 
-const port = 7777
+const port = process.env.SERVER_PORT;
 
 // Set up and init Express API
 const app = express()
