@@ -22,6 +22,6 @@ export const notifyFrame = (jobId: string, frame: number) => {
     io.emit("frame-update", { jobId, frame });
 }
 
-export const notifyRenderEnd = (jobId: string) => {
-    io.emit("render-end", { jobId });
+export const notifyRenderEnd = (jobId: string, state: string) => {
+    io.emit("render-end", { jobId, state });
 }

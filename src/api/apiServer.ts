@@ -57,8 +57,9 @@ export const initApiServer = (app: Express) => {
         if (!job)
             return res.status(404).json({ "error": "No job found" });
 
-        repo.updateJob({...job, state: data.event === "render-cancel" ? "canceled" : "finished"});
-        notifyRenderEnd(id);
+        const state = data.event === "render-cancel" ? "canceled" : "finished";
+        repo.updateJob({...job, state: state});
+        notifyRenderEnd(id, state);
 
         return res.sendStatus(200);
     })
