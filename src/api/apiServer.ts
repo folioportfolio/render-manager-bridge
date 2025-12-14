@@ -1,11 +1,15 @@
-import express from "express"
-import { createJob, endJob, getJob, getJobs, updateJobFrame, type RenderJob } from "../state/renderJobs.js"
-import { notifyFrame, notifyRenderEnd, notifyRenderStart } from "../sockets/socketServer.js"
-import type { Request, Response } from "express"
-import type { RenderEndRequest, RenderReportRequest, RenderStartRequest } from "../types/requests.js"
-import type { Express } from "express"
+import express from "express";
+import { notifyFrame, notifyRenderEnd, notifyRenderStart } from "../sockets/socketServer.js";
+import type { Request, Response } from "express";
+import type { RenderEndRequest, RenderReportRequest, RenderStartRequest } from "../types/requestTypes.js";
+import type { Express } from "express";
+import type { JobsRepository, RenderJob } from "../types/jobTypes.js";
+import "../storage/databaseRepository.js";
+import { SqliteJobRepository } from "../storage/databaseRepository.js";
 
 export const initApiServer = (app: Express) => {
+    const repo: JobsRepository = new SqliteJobRepository();
+
     app.use(express.json())
 
     app.use(function (req: Request, res: Response, next: () => void) {
@@ -24,14 +28,14 @@ export const initApiServer = (app: Express) => {
             frameStart: data.frameStart,
             frameEnd: data.frameEnd,
             frameStep: data.frameStep,
-            timeStart: new Date(data.timestamp * 1000),
+            timeStart: data.timestamp,
             project: data.project,
             resolutionX: data.resolutionX,
             resolutionY: data.resolutionY,
             state: "started"
         }
 
-        const id = createJob(job);
+        const id = repo.createJob(job);
 
         notifyRenderStart(id, {id, ...job});
 
@@ -48,7 +52,12 @@ export const initApiServer = (app: Express) => {
 
         const data = req.body as RenderEndRequest;
 
-        endJob(id, data.event === "render-cancel");
+        const job =  repo.getJob(id);
+
+        if (!job)
+            return res.status(404).json({ "error": "No job found" });
+
+        repo.updateJob({...job, state: data.event === "render-cancel" ? "canceled" : "finished"});
         notifyRenderEnd(id);
 
         return res.sendStatus(200);
@@ -64,14 +73,19 @@ export const initApiServer = (app: Express) => {
 
         const data = req.body as RenderReportRequest;
 
-        updateJobFrame(id, data.currentFrame, new Date(data.timestamp * 1000));
+        const job = repo.getJob(id);
+
+        if (!job)
+            return res.status(404).json({ "error": "No job found" });
+        
+        repo.updateJob({...job, currentFrame: data.currentFrame, timeLastFrame: data.timestamp});
         notifyFrame(id, data.currentFrame);
 
         return res.sendStatus(200);
     })
 
     app.get('/api/render', (req: Request, res: Response) => {
-        return res.json(getJobs());
+        return res.json(repo.getAllJobs());
     })
 
     app.get('/api/render/:id', (req: Request, res: Response) => {
@@ -80,7 +94,7 @@ export const initApiServer = (app: Express) => {
         if (!id)
             return res.status(404).json({ "error": "No key specified" });
 
-        return res.json(getJob(id));
+        return res.json(repo.getJob(id));
     })
 
 }

@@ -15,6 +15,7 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.2",
     "dotenv": "^17.2.3",
@@ -28,6 +29,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "better-sqlite3": "^12.5.0",
     "socket.io": "^4.8.1"
   }
 }

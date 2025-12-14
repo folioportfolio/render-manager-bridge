@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
-import type { RenderJob } from "../state/renderJobs.js";
+import type { RenderJob } from "../types/jobTypes.js";
 
 let io: Server
 
