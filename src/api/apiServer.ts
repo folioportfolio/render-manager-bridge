@@ -86,16 +86,35 @@ export const initApiServer = (app: Express) => {
     })
 
     app.get('/api/render', (req: Request, res: Response) => {
-        return res.json(repo.getAllJobs());
+        const id = req.query.id as string | undefined;
+        const countParam = req.query.count as string | undefined;
+        const cursor = req.query.cursor as string | undefined;
+
+        // ID set, return single job
+        if (id) {
+            return res.json(repo.getJob(id));
+        }
+
+        // Count set, return paginated jobs
+        const count = countParam ? parseInt(countParam, 10) : undefined;
+
+        if (countParam && Number.isNaN(count)) {
+            return res.status(400).json({ error: 'count must be a number' });
+        }
+
+        // No params parsed, return all
+        if (!count && !cursor) {
+            return res.json(repo.getJobs("startTimeDESC"));
+        }
+
+        // No cursor parsed, return first X
+        if (count && !cursor) {
+            return res.json(repo.getJobs("startTimeDESC", count));
+        }
+
+        // Cursor and count parsed, return page
+        return res.json(
+            repo.getJobs("startTimeDESC", count, cursor)
+        );
     })
-
-    app.get('/api/render/:id', (req: Request, res: Response) => {
-        const id = req.params.id;
-
-        if (!id)
-            return res.status(404).json({ "error": "No key specified" });
-
-        return res.json(repo.getJob(id));
-    })
-
 }

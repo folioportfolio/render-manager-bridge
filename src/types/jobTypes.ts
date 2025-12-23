@@ -28,9 +28,11 @@ export type RenderJobDb = {
     state: "started" | "inProgress" | "finished" | "canceled";
 };
 
+export type OrderType = "startTimeASC" | "startTimeDESC" | "lastFrameTimeASC" | "lastFrameTimeDESC";
+
 export interface JobsRepository {
     createJob(job: Omit<RenderJob, "id">): string;
     updateJob(job: RenderJob): void;
     getJob(id: string): RenderJob | null;
-    getAllJobs(): RenderJob[];
+    getJobs(order: OrderType, count?: number, cursor?: string): RenderJob[];
 }

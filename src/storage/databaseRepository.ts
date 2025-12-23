@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import type {Database as SqliteDb} from "better-sqlite3";
-import type { JobsRepository, RenderJob, RenderJobDb } from "../types/jobTypes.js";
+import type { JobsRepository, OrderType, RenderJob, RenderJobDb } from "../types/jobTypes.js";
 
 export class SqliteJobRepository implements JobsRepository {
     db: SqliteDb;
@@ -83,10 +83,35 @@ export class SqliteJobRepository implements JobsRepository {
         return job ? this.mapJob(job) : null;
     }
 
-    getAllJobs(): RenderJob[] {
-        const jobs = this.db.prepare(`
-            SELECT * FROM render_jobs
-        `).all() as RenderJobDb[];
+    getJobs(order: OrderType = "startTimeDESC", count?: number, cursor?: string): RenderJob[] {
+        const orderColumn = this.getOrderColumn(order);
+        const orderDirection = this.getOrderDirection(order);
+        
+        let query = `
+            SELECT *
+            FROM render_jobs
+        `;
+
+        if (cursor) {
+            query += `
+                WHERE (${orderColumn}, id) < (
+                    SELECT ${orderColumn}, id
+                    FROM render_jobs
+                    WHERE id = @cursor
+                )
+            `;
+        }
+
+        query += `ORDER BY ${orderColumn} ${orderDirection}`;
+
+        if (count !== undefined) {
+            query += ` LIMIT @count`;
+        }
+
+        const jobs = this.db.prepare(query).all({
+                cursor: cursor,
+                count: count
+            }) as RenderJobDb[];
 
         return jobs.map(x => this.mapJob(x));
     }
@@ -142,4 +167,29 @@ export class SqliteJobRepository implements JobsRepository {
         };
     }
 
+    private getOrderColumn(order: OrderType): string {
+        switch (order) {
+            case "startTimeASC":
+            case "startTimeDESC":
+                return "time_start";
+            case "lastFrameTimeASC":
+            case "lastFrameTimeDESC":
+                return "time_last_frame";
+            default:
+                throw new Error("Invalid order type");
+        }
+    }
+
+    private getOrderDirection(order: OrderType): string {
+        switch (order) {
+            case "startTimeASC":
+            case "lastFrameTimeASC":
+                return "ASC";
+            case "startTimeDESC":
+            case "lastFrameTimeDESC":
+                return "DESC";
+            default:
+                throw new Error("Invalid order type");
+        }
+    }
 }
