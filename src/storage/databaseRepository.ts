@@ -104,7 +104,7 @@ export class SqliteJobRepository implements JobsRepository {
 
         query += `ORDER BY ${orderColumn} ${orderDirection}`;
 
-        if (count !== undefined) {
+        if (count) {
             query += ` LIMIT @count`;
         }
 
