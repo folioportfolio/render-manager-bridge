@@ -19,11 +19,11 @@ export const initApiServer = (app: Express) => {
         next();
     });
 
-    app.post('/api/render/start', (req: Request, res: Response) => {
-        console.log("Received Render Start")
+    app.post("/api/render/start", async (req: Request, res: Response) => {
+        console.log("Received Render Start");
         const data = req.body as RenderStartRequest;
 
-        const job : Omit<RenderJob, "id"> = {
+        const job: Omit<RenderJob, "id"> = {
             engine: data.engine,
             frameStart: data.frameStart,
             frameEnd: data.frameEnd,
@@ -32,17 +32,17 @@ export const initApiServer = (app: Express) => {
             project: data.project,
             resolutionX: data.resolutionX,
             resolutionY: data.resolutionY,
-            state: "started"
-        }
+            state: "started",
+        };
 
-        const id = repo.createJob(job);
+        const id = await repo.createJob(job);
 
-        notifyRenderStart(id, {id, ...job});
+        notifyRenderStart(id, { id, ...job });
 
         return res.send(id);
-    })
+    });
 
-    app.post('/api/render/end/:id', (req: Request, res: Response) => {
+    app.post('/api/render/end/:id', async (req: Request, res: Response) => {
         console.log("Received Render End")
 
         const id = req.params.id;
@@ -52,50 +52,49 @@ export const initApiServer = (app: Express) => {
 
         const data = req.body as RenderEndRequest;
 
-        const job =  repo.getJob(id);
+        const job = await repo.getJob(id);
 
         if (!job)
             return res.status(404).json({ "error": "No job found" });
 
         const state = data.event === "render-cancel" ? "canceled" : "finished";
-        repo.updateJob({...job, state: state});
+        await repo.updateJob({...job, state: state});
         notifyRenderEnd(id, state);
 
         return res.sendStatus(200);
     })
 
-    app.post('/api/render/report/:id', (req: Request, res: Response) => {
-        console.log("Received Render Frame")
+    app.post("/api/render/report/:id", async (req: Request, res: Response) => {
+        console.log("Received Render Frame");
 
         const id = req.params.id;
 
         if (!id)
-            return res.status(404).json({ "error": "No key specified" });
+            return res.status(404).json({ error: "No key specified" });
 
         const data = req.body as RenderReportRequest;
 
-        const job = repo.getJob(id);
-
-        if (!job)
-            return res.status(404).json({ "error": "No job found" });
-        
-        repo.updateJob({...job, currentFrame: data.currentFrame, timeLastFrame: data.timestamp});
+        await repo.createJobFrame({
+            jobId: id,
+            frameNumber: data.currentFrame,
+            timestamp: data.timestamp,
+        });
         notifyFrame(id, data.currentFrame);
 
         return res.sendStatus(200);
-    })
+    });
 
-    app.get('/api/render', (req: Request, res: Response) => {
-        return res.json(repo.getAllJobs());
-    })
+    app.get("/api/render", async (req: Request, res: Response) => {
+        return res.json(await repo.getAllJobs());
+    });
 
-    app.get('/api/render/:id', (req: Request, res: Response) => {
+    app.get("/api/render/:id", async (req: Request, res: Response) => {
         const id = req.params.id;
 
         if (!id)
-            return res.status(404).json({ "error": "No key specified" });
+            return res.status(404).json({ error: "No key specified" });
 
-        return res.json(repo.getJob(id));
-    })
+        return res.json(await repo.getJob(id));
+    });
 
 }

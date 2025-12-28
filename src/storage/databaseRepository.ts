@@ -1,145 +1,147 @@
 import Database from "better-sqlite3";
-import type {Database as SqliteDb} from "better-sqlite3";
-import type { JobsRepository, RenderJob, RenderJobDb } from "../types/jobTypes.js";
+import { BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";
+import type {
+    JobFrame,
+    JobsRepository,
+    RenderJob
+} from "../types/jobTypes.js";
+import {renderJobs} from "./schema/renderJobs.js";
+import {jobFrames} from "./schema/jobFrames.js";
+import { eq, max } from "drizzle-orm";
+import {initializeDb} from "./database.js";
 
 export class SqliteJobRepository implements JobsRepository {
-    db: SqliteDb;
+    db: BetterSQLite3Database<Record<string, never>> & {
+        $client: Database.Database;
+    };
 
     constructor() {
-        this.db = new Database("./database/app.db");
-        this.initDb();
+        const { db } = initializeDb();
+        this.db = db;
     }
 
-    createJob(job: Omit<RenderJob, "id">): string {
+    async createJob(job: Omit<RenderJob, "id">): Promise<string> {
         const id = crypto.randomUUID();
 
-        this.db.prepare(`
-            INSERT INTO render_jobs (
-                id, 
-                frame_start, 
-                frame_step,
-                frame_end,
-                engine,
-                time_start,
-                project,
-                resolution_x,
-                resolution_y,
-                state
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-            id,
-            job.frameStart,
-            job.frameStep,
-            job.frameEnd,
-            job.engine,
-            job.timeStart,
-            job.project,
-            job.resolutionX,
-            job.resolutionY,
-            job.state
-        );
+        await this.db.insert(renderJobs).values({
+            id: id,
+            frameStart: job.frameStart,
+            frameEnd: job.frameEnd,
+            frameStep: job.frameStep,
+            resolutionX: job.resolutionX,
+            resolutionY: job.resolutionY,
+            engine: job.engine,
+            timeStart: job.timeStart,
+            project: job.project,
+            state: job.state,
+        });
 
         return id;
     }
 
-    updateJob(job: RenderJob): void {
-        this.db.prepare(`
-            UPDATE render_jobs
-            SET
-                frame_start     = @frameStart,
-                frame_step      = @frameStep,
-                frame_end       = @frameEnd,
-                current_frame   = @currentFrame,
-                engine          = @engine,
-                time_start      = @timeStart,
-                time_last_frame = @timeLastFrame,
-                project         = @project,
-                resolution_x    = @resolutionX,
-                resolution_y    = @resolutionY,
-                state           = @state
-            WHERE id = @id
-        `).run({
-            id: job.id,
-            frameStart: job.frameStart,
-            frameStep: job.frameStep,
-            frameEnd: job.frameEnd,
-            currentFrame: job.currentFrame ?? null,
-            engine: job.engine,
-            timeStart: job.timeStart,
-            timeLastFrame: job.timeLastFrame ?? null,
-            project: job.project,
-            resolutionX: job.resolutionX,
-            resolutionY: job.resolutionY,
-            state: job.state
+    async updateJob(job: RenderJob): Promise<void> {
+        await this.db
+            .update(renderJobs)
+            .set({
+                state: job.state,
+            })
+            .where(eq(renderJobs.id, job.id));
+    }
+
+    async getJob(id: string): Promise<RenderJob | null> {
+        const rows = await this.db
+            .select({
+                job: renderJobs,
+                frames: jobFrames,
+            })
+            .from(renderJobs)
+            .leftJoin(jobFrames, eq(jobFrames.jobId, renderJobs.id))
+            .where(eq(renderJobs.id, id));
+
+        if (!rows || rows.length === 0) return null;
+
+        const job = rows[0]!.job;
+
+        const frames = rows
+            .map((r) => r.frames)
+            .filter((f): f is NonNullable<typeof f> => f !== null);
+
+        return job ? this.mapJob(job, frames) : null;
+    }
+
+    async getAllJobs(): Promise<RenderJob[] | null> {
+        const rows = await this.db
+            .select({
+                job: renderJobs,
+                lastFrame: max(jobFrames.frameNumber),
+            })
+            .from(renderJobs)
+            .leftJoin(jobFrames, eq(jobFrames.jobId, renderJobs.id))
+            .groupBy(renderJobs.id);
+
+        return rows?.map((x) => ({...this.mapJob(x.job), currentFrame: x.lastFrame ?? 0})) ?? null;
+    }
+
+    async createJobFrame(frame: JobFrame): Promise<string> {
+        const id = crypto.randomUUID();
+
+        await this.db.insert(jobFrames).values({
+            id: id,
+            jobId: frame.jobId,
+            frameNumber: frame.frameNumber,
+            timestamp: frame.timestamp,
         });
+
+        return id;
     }
 
-    getJob(id: string): RenderJob | null {
-        const job = this.db.prepare(`
-            SELECT * FROM render_jobs WHERE id = ?
-        `).get(id) as RenderJobDb;
+    async getAllFrameForJob(id: string): Promise<JobFrame[] | null> {
+        const frames = await this.db
+            .select()
+            .from(jobFrames)
+            .where(eq(jobFrames.jobId, id));
 
-        return job ? this.mapJob(job) : null;
+        return frames?.map((x) => this.mapFrame(x)) ?? null;
     }
 
-    getAllJobs(): RenderJob[] {
-        const jobs = this.db.prepare(`
-            SELECT * FROM render_jobs
-        `).all() as RenderJobDb[];
+    async getLastFrameForJob(id: string): Promise<number | null> {
+        const frames = await this.db
+            .select({
+                maxFrame: max(jobFrames.frameNumber),
+            })
+            .from(jobFrames)
+            .where(eq(jobFrames.jobId, id));
 
-        return jobs.map(x => this.mapJob(x));
+        return frames[0]?.maxFrame ?? null;
     }
 
-    initDb(): void {
-        try {
-            this.db.prepare(`
-                CREATE TABLE IF NOT EXISTS render_jobs (
-                    id TEXT PRIMARY KEY,
-
-                    frame_start     INTEGER NOT NULL,
-                    frame_step      INTEGER NOT NULL,
-                    frame_end       INTEGER NOT NULL,
-                    current_frame   INTEGER,
-
-                    engine          TEXT,
-
-                    time_start      REAL NOT NULL,
-                    time_last_frame REAL,
-
-                    project         TEXT,
-
-                    resolution_x    INTEGER NOT NULL,
-                    resolution_y    INTEGER NOT NULL,
-
-                    state TEXT NOT NULL
-                        CHECK (state IN ('started', 'inProgress', 'finished', 'canceled'))
-                )
-            `).run();
-        } catch (error) {
-        console.log(error);
-        }
-    }
-
-    private mapJob(row: RenderJobDb): RenderJob {
+    private mapJob(
+        row: typeof renderJobs.$inferSelect,
+        frames: typeof jobFrames.$inferSelect[] = [],
+    ): RenderJob {
+        const framesMapped = frames.map(x => this.mapFrame(x));
         return {
             id: row.id,
-            frameStart: row.frame_start,
-            frameStep: row.frame_step,
-            frameEnd: row.frame_end,
+            frameStart: row.frameStart,
+            frameStep: row.frameStep,
+            frameEnd: row.frameEnd,
             engine: row.engine,
-            timeStart: row.time_start,
+            timeStart: row.timeStart,
             project: row.project,
-            resolutionX: row.resolution_x,
-            resolutionY: row.resolution_y,
+            resolutionX: row.resolutionX,
+            resolutionY: row.resolutionY,
             state: row.state,
-            ...(row.time_last_frame !== null && {
-                timeLastFrame: row.time_last_frame
-            }),
-            ...(row.current_frame !== null && {
-                currentFrame: row.current_frame
-            }),
+            frames: framesMapped,
+            currentFrame: Math.max(...framesMapped.map((x) => x.frameNumber)),
         };
     }
 
+    private mapFrame(frame: typeof jobFrames.$inferSelect): JobFrame {
+        return {
+            id: frame.id,
+            jobId: frame.jobId,
+            timestamp: frame.timestamp,
+            frameNumber: frame.frameNumber,
+        };
+    }
 }
