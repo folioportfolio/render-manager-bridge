@@ -1,13 +1,13 @@
 import Database from "better-sqlite3";
-import { BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";
+import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type {
     JobFrame,
-    JobsRepository,
+    JobsRepository, OrderType,
     RenderJob
 } from "../types/jobTypes.js";
 import {renderJobs} from "./schema/renderJobs.js";
 import {jobFrames} from "./schema/jobFrames.js";
-import { eq, max } from "drizzle-orm";
+import { desc, eq, max } from "drizzle-orm";
 import {initializeDb} from "./database.js";
 
 export class SqliteJobRepository implements JobsRepository {
@@ -69,17 +69,47 @@ export class SqliteJobRepository implements JobsRepository {
         return job ? this.mapJob(job, frames) : null;
     }
 
-    async getAllJobs(): Promise<RenderJob[] | null> {
-        const rows = await this.db
+    async getJobsPaged(
+        order: OrderType,
+        count?: number,
+        page?: number,
+    ): Promise<RenderJob[] | null> {
+
+        const rowsPromise = this.db
             .select({
                 job: renderJobs,
                 lastFrame: max(jobFrames.frameNumber),
             })
             .from(renderJobs)
+            .orderBy(this.GetOrder(order))
             .leftJoin(jobFrames, eq(jobFrames.jobId, renderJobs.id))
             .groupBy(renderJobs.id);
 
-        return rows?.map((x) => ({...this.mapJob(x.job), currentFrame: x.lastFrame ?? 0})) ?? null;
+        if (count)
+            rowsPromise.limit(count);
+
+        if (page && count)
+            rowsPromise.offset((page - 1) * count);
+
+        const rows = await rowsPromise;
+
+        return (
+            rows?.map((x) => ({
+                ...this.mapJob(x.job),
+                currentFrame: x.lastFrame ?? 0,
+            })) ?? null
+        );
+    }
+
+    private GetOrder(order: OrderType) {
+        switch (order) {
+            case "startTimeASC":
+                return renderJobs.timeStart;
+
+            case "startTimeDESC":
+            default:
+                return desc(renderJobs.timeStart);
+        }
     }
 
     async createJobFrame(frame: JobFrame): Promise<string> {
@@ -117,9 +147,9 @@ export class SqliteJobRepository implements JobsRepository {
 
     private mapJob(
         row: typeof renderJobs.$inferSelect,
-        frames: typeof jobFrames.$inferSelect[] = [],
+        frames: (typeof jobFrames.$inferSelect)[] = [],
     ): RenderJob {
-        const framesMapped = frames.map(x => this.mapFrame(x));
+        const framesMapped = frames.map((x) => this.mapFrame(x));
         return {
             id: row.id,
             frameStart: row.frameStart,

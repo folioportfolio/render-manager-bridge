@@ -85,16 +85,40 @@ export const initApiServer = (app: Express) => {
     });
 
     app.get("/api/render", async (req: Request, res: Response) => {
-        return res.json(await repo.getAllJobs());
-    });
+        const id = req.query.id as string | undefined;
+        const countParam = req.query.count as string | undefined;
+        const pageParam = req.query.page as string | undefined;
 
-    app.get("/api/render/:id", async (req: Request, res: Response) => {
-        const id = req.params.id;
+        // ID set, return single job
+        if (id) {
+            return res.json(await repo.getJob(id));
+        }
 
-        if (!id)
-            return res.status(404).json({ error: "No key specified" });
+        // Count set, return paginated jobs
+        const count = countParam ? parseInt(countParam, 10) : undefined;
+        const page = pageParam ? parseInt(pageParam, 10) : undefined;
 
-        return res.json(await repo.getJob(id));
-    });
+        if (countParam && Number.isNaN(count)) {
+            return res.status(400).json({ error: "count must be a number" });
+        }
 
+        if (pageParam && Number.isNaN(page)) {
+            return res.status(400).json({ error: "page must be a number" });
+        }
+
+        // No params parsed, return all
+        if (!count && !page) {
+            return res.json(await repo.getJobsPaged("startTimeDESC"));
+        }
+
+        // No cursor parsed, return first X
+        if (count && !page) {
+            return res.json(await repo.getJobsPaged("startTimeDESC", count));
+        }
+
+        // Cursor and count parsed, return page
+        return res.json(
+            await repo.getJobsPaged("startTimeDESC", count, page)
+        );
+    })
 }
