@@ -7,7 +7,7 @@ import type {
 } from "../types/jobTypes.js";
 import {renderJobs} from "./schema/renderJobs.js";
 import {jobFrames} from "./schema/jobFrames.js";
-import { desc, eq, max } from "drizzle-orm";
+import { desc, eq, max, count as countRows } from "drizzle-orm";
 import {initializeDb} from "./database.js";
 
 export class SqliteJobRepository implements JobsRepository {
@@ -73,7 +73,7 @@ export class SqliteJobRepository implements JobsRepository {
         order: OrderType,
         count?: number,
         page?: number,
-    ): Promise<RenderJob[] | null> {
+    ): Promise<{items: RenderJob[], totalCount: number} | null> {
 
         const rowsPromise = this.db
             .select({
@@ -93,12 +93,16 @@ export class SqliteJobRepository implements JobsRepository {
 
         const rows = await rowsPromise;
 
-        return (
-            rows?.map((x) => ({
-                ...this.mapJob(x.job),
-                currentFrame: x.lastFrame ?? 0,
-            })) ?? null
-        );
+        const counts = await this.db
+            .select({ total: countRows() })
+            .from(renderJobs);
+
+        const result = rows?.map((x) => ({
+            ...this.mapJob(x.job),
+            currentFrame: x.lastFrame ?? 0,
+        })) ?? null;
+
+        return {items: result, totalCount: counts[0]?.total ?? 0}
     }
 
     private GetOrder(order: OrderType) {

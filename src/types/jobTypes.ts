@@ -26,7 +26,11 @@ export interface JobsRepository {
     createJob(job: Omit<RenderJob, "id">): Promise<string>;
     updateJob(job: RenderJob): Promise<void>;
     getJob(id: string): Promise<RenderJob | null>;
-    getJobsPaged(order: OrderType, count?: number, page?: number): Promise<RenderJob[] | null>;
+    getJobsPaged(
+        order: OrderType,
+        count?: number,
+        page?: number,
+    ): Promise<{ items: RenderJob[]; totalCount: number } | null>;
 
     createJobFrame(frame: Omit<JobFrame, "id">): Promise<string>;
     getAllFrameForJob(id: string): Promise<JobFrame[] | null>;
