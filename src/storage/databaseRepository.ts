@@ -34,6 +34,8 @@ export class SqliteJobRepository implements JobsRepository {
             timeStart: job.timeStart,
             project: job.project,
             state: job.state,
+            software: job.software,
+            version: job.version
         });
 
         return id;
@@ -123,7 +125,9 @@ export class SqliteJobRepository implements JobsRepository {
             id: id,
             jobId: frame.jobId,
             frameNumber: frame.frameNumber,
+            time: frame.time,
             timestamp: frame.timestamp,
+            info: frame.info
         });
 
         return id;
@@ -165,6 +169,9 @@ export class SqliteJobRepository implements JobsRepository {
             resolutionX: row.resolutionX,
             resolutionY: row.resolutionY,
             state: row.state,
+            software: row.software ?? "",
+            version: row.version ?? "",
+
             frames: framesMapped,
             currentFrame: Math.max(...framesMapped.map((x) => x.frameNumber)),
         };
@@ -174,8 +181,10 @@ export class SqliteJobRepository implements JobsRepository {
         return {
             id: frame.id,
             jobId: frame.jobId,
+            time: frame.time,
             timestamp: frame.timestamp,
             frameNumber: frame.frameNumber,
+            info: frame.info ?? ""
         };
     }
 }

@@ -8,6 +8,9 @@ export interface RenderJob {
     project: string;
     resolutionX: number;
     resolutionY: number;
+    software?: string;
+    version?: string;
+
     currentFrame?: number;
     frames?: JobFrame[];
     state: "started" | "inProgress" | "finished" | "canceled";
@@ -17,7 +20,9 @@ export interface JobFrame {
     id: string;
     jobId: string;
     frameNumber: number;
+    time: number;
     timestamp: number;
+    info?: string;
 }
 
 export type OrderType = "startTimeASC" | "startTimeDESC";

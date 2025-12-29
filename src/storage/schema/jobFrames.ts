@@ -11,5 +11,7 @@ export const jobFrames = sqliteTable("job_frames", {
         }),
 
     frameNumber: integer("frame_number").notNull(),
+    time: real("time").notNull(),
     timestamp: real("timestamp").notNull(),
+    info: text("info"),
 });

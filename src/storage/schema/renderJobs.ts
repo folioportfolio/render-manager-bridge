@@ -16,6 +16,9 @@ export const renderJobs = sqliteTable("render_jobs", {
     resolutionX: integer("resolution_x").notNull(),
     resolutionY: integer("resolution_y").notNull(),
 
+    software: text("software"),
+    version: text("version"),
+
     state: text("state", {
         enum: ["started", "inProgress", "finished", "canceled"],
     }).notNull(),

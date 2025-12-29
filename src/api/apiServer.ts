@@ -33,6 +33,8 @@ export const initApiServer = (app: Express) => {
             resolutionX: data.resolutionX,
             resolutionY: data.resolutionY,
             state: "started",
+            software: data.software,
+            version: data.version
         };
 
         const id = await repo.createJob(job);
@@ -77,7 +79,9 @@ export const initApiServer = (app: Express) => {
         await repo.createJobFrame({
             jobId: id,
             frameNumber: data.currentFrame,
+            time: data.time,
             timestamp: data.timestamp,
+            info: data.info
         });
         notifyFrame(id, data.currentFrame);
 

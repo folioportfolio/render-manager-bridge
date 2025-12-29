@@ -8,6 +8,13 @@
       "when": 1766879681980,
       "tag": "0000_hot_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1767018714518,
+      "tag": "0001_grey_black_widow",
+      "breakpoints": true
     }
   ]
 }
