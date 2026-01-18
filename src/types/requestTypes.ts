@@ -1,4 +1,6 @@
-type RenderEvent = "render-start" | "render-end" | "render-frame-write" | "render-cancel"; 
+import type { Request } from "express";
+
+type RenderEvent = "render-start" | "render-end" | "render-frame-write" | "render-cancel";
 
 export interface RenderStartRequest {
     event: RenderEvent;

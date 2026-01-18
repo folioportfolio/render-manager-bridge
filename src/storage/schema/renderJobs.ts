@@ -1,4 +1,6 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import {apiKeys} from "./apiKeys.js";
+import {users} from "./users.js";
 
 export const renderJobs = sqliteTable("render_jobs", {
     id: text("id").primaryKey(),
@@ -18,6 +20,13 @@ export const renderJobs = sqliteTable("render_jobs", {
 
     software: text("software"),
     version: text("version"),
+
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, {
+            onDelete: "cascade",
+            onUpdate: "cascade",
+        }),
 
     state: text("state", {
         enum: ["started", "inProgress", "finished", "canceled"],

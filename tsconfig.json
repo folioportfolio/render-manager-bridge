@@ -39,5 +39,6 @@
         "noUncheckedSideEffectImports": true,
         "skipLibCheck": true
     },
-    "exclude": ["dist","drizzle.config.ts", "drizzle/**"]
+    "exclude": ["dist", "drizzle.config.ts", "drizzle/**"],
+    "include": ["src"]
 }

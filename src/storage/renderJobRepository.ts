@@ -7,10 +7,10 @@ import type {
 } from "../types/jobTypes.js";
 import {renderJobs} from "./schema/renderJobs.js";
 import {jobFrames} from "./schema/jobFrames.js";
-import { desc, eq, max, count as countRows } from "drizzle-orm";
+import { desc, eq, max, count as countRows, and } from "drizzle-orm";
 import {initializeDb} from "./database.js";
 
-export class SqliteJobRepository implements JobsRepository {
+export class RenderJobRepository implements JobsRepository {
     db: BetterSQLite3Database<Record<string, never>> & {
         $client: Database.Database;
     };
@@ -35,7 +35,8 @@ export class SqliteJobRepository implements JobsRepository {
             project: job.project,
             state: job.state,
             software: job.software,
-            version: job.version
+            version: job.version,
+            userId: job.userId
         });
 
         return id;
@@ -50,7 +51,7 @@ export class SqliteJobRepository implements JobsRepository {
             .where(eq(renderJobs.id, job.id));
     }
 
-    async getJob(id: string): Promise<RenderJob | null> {
+    async getJob(id: string, userId: string): Promise<RenderJob | null> {
         const rows = await this.db
             .select({
                 job: renderJobs,
@@ -58,7 +59,7 @@ export class SqliteJobRepository implements JobsRepository {
             })
             .from(renderJobs)
             .leftJoin(jobFrames, eq(jobFrames.jobId, renderJobs.id))
-            .where(eq(renderJobs.id, id));
+            .where(and(eq(renderJobs.id, id), eq(renderJobs.userId, userId)));
 
         if (!rows || rows.length === 0) return null;
 
@@ -72,6 +73,7 @@ export class SqliteJobRepository implements JobsRepository {
     }
 
     async getJobsPaged(
+        userId: string,
         order: OrderType,
         count?: number,
         page?: number,
@@ -84,6 +86,7 @@ export class SqliteJobRepository implements JobsRepository {
             })
             .from(renderJobs)
             .orderBy(this.GetOrder(order))
+            .where(eq(renderJobs.userId, userId))
             .leftJoin(jobFrames, eq(jobFrames.jobId, renderJobs.id))
             .groupBy(renderJobs.id);
 
@@ -174,6 +177,7 @@ export class SqliteJobRepository implements JobsRepository {
 
             frames: framesMapped,
             currentFrame: Math.max(...framesMapped.map((x) => x.frameNumber)),
+            userId: row.userId
         };
     }
 

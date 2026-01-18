@@ -14,6 +14,8 @@ export interface RenderJob {
     currentFrame?: number;
     frames?: JobFrame[];
     state: "started" | "inProgress" | "finished" | "canceled";
+
+    userId: string;
 }
 
 export interface JobFrame {
@@ -30,8 +32,9 @@ export type OrderType = "startTimeASC" | "startTimeDESC";
 export interface JobsRepository {
     createJob(job: Omit<RenderJob, "id">): Promise<string>;
     updateJob(job: RenderJob): Promise<void>;
-    getJob(id: string): Promise<RenderJob | null>;
+    getJob(id: string, userId: string): Promise<RenderJob | null>;
     getJobsPaged(
+        userId: string,
         order: OrderType,
         count?: number,
         page?: number,
