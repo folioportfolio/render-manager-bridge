@@ -10,9 +10,9 @@ import type { Express } from "express";
 import type { JobsRepository, RenderJob } from "../types/jobTypes.js";
 import "../storage/renderJobRepository.js";
 import { RenderJobRepository } from "../storage/renderJobRepository.js";
-import {requireAuth} from "../auth/authMiddleware.js";
-import {ApiKeyRepository} from "../storage/apiKeyRepository.js";
-import {requireApiKey} from "../auth/apiKeyMiddleware.js";
+import { requireAuth } from "../auth/authMiddleware.js";
+import { ApiKeyRepository } from "../storage/apiKeyRepository.js";
+import { requireApiKey } from "../auth/apiKeyMiddleware.js";
 import { UserRepository } from "../storage/userRepository.js";
 
 export const initApiServer = (app: Express) => {
@@ -80,7 +80,7 @@ export const initApiServer = (app: Express) => {
         const state =
             data.event === "render-cancel" ? "canceled" : "finished";
         await jobsRepo.updateJob({ ...job, state: state });
-        notifyRenderEnd(id, state);
+        notifyRenderEnd(id, state, userId);
 
         return res.sendStatus(200);
     });
@@ -96,7 +96,7 @@ export const initApiServer = (app: Express) => {
 
             const job = await jobsRepo.getJob(id, userId);
 
-            if (job)
+            if (!job)
                 return res.status(404).json({ error: "No job found" });
 
             const data = req.body as RenderReportRequest;
@@ -109,7 +109,7 @@ export const initApiServer = (app: Express) => {
                 info: data.info,
             });
 
-            notifyFrame(id, data.currentFrame);
+            notifyFrame(id, data.currentFrame, userId);
 
             return res.sendStatus(200);
         }
@@ -160,10 +160,10 @@ export const initApiServer = (app: Express) => {
 
         const keys = await apiKeyRepo.getApiKeysForUser(userId);
 
-        return res.json(keys?.map(x => {
-            x.apiKey;
-            x.dateCreated;
-        }));
+        return res.json(keys?.map(x => ({
+            apiKey: x.apiKey,
+            dateCreated: x.dateCreated
+        })));
     });
 
     app.post("/api/apps", requireAuth, async (req: Request, res: Response) => {
