@@ -6,6 +6,7 @@ export interface RenderJob {
     engine: string;
     timeStart: number;
     timeEnd?: number | undefined;
+    framesRendered?: number | undefined;
     project: string;
     resolutionX: number;
     resolutionY: number;

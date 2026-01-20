@@ -85,6 +85,7 @@ export class RenderJobRepository implements JobsRepository {
             .select({
                 job: renderJobs,
                 lastFrame: max(jobFrames.frameNumber),
+                framesRendered: countRows(jobFrames.id),
             })
             .from(renderJobs)
             .orderBy(this.GetOrder(order))
@@ -104,10 +105,12 @@ export class RenderJobRepository implements JobsRepository {
             .select({ total: countRows() })
             .from(renderJobs);
 
-        const result = rows?.map((x) => ({
-            ...this.mapJob(x.job),
-            currentFrame: x.lastFrame ?? 0,
-        })) ?? null;
+        const result =
+            rows?.map((x) => ({
+                ...this.mapJob(x.job),
+                currentFrame: x.lastFrame ?? 0,
+                framesRendered: x.framesRendered,
+            })) ?? null;
 
         return {items: result, totalCount: counts[0]?.total ?? 0}
     }
