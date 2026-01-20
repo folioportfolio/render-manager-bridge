@@ -12,6 +12,7 @@ export const renderJobs = sqliteTable("render_jobs", {
     engine: text("engine").notNull(),
 
     timeStart: integer("time_start").notNull(),
+    timeEnd: integer("time_end"),
 
     project: text("project").notNull(),
 

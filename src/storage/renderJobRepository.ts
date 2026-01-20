@@ -32,6 +32,7 @@ export class RenderJobRepository implements JobsRepository {
             resolutionY: job.resolutionY,
             engine: job.engine,
             timeStart: job.timeStart,
+            timeEnd: job.timeEnd,
             project: job.project,
             state: job.state,
             software: job.software,
@@ -47,6 +48,7 @@ export class RenderJobRepository implements JobsRepository {
             .update(renderJobs)
             .set({
                 state: job.state,
+                timeEnd: job.timeEnd,
             })
             .where(eq(renderJobs.id, job.id));
     }
@@ -168,6 +170,7 @@ export class RenderJobRepository implements JobsRepository {
             frameEnd: row.frameEnd,
             engine: row.engine,
             timeStart: row.timeStart,
+            timeEnd: row.timeEnd ?? undefined,
             project: row.project,
             resolutionX: row.resolutionX,
             resolutionY: row.resolutionY,

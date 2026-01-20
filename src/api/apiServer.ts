@@ -79,7 +79,7 @@ export const initApiServer = (app: Express) => {
 
         const state =
             data.event === "render-cancel" ? "canceled" : "finished";
-        await jobsRepo.updateJob({ ...job, state: state });
+        await jobsRepo.updateJob({ ...job, timeEnd: Date.now(), state: state });
         notifyRenderEnd(id, state, userId);
 
         return res.sendStatus(200);

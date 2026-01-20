@@ -22,6 +22,13 @@
       "when": 1768688741887,
       "tag": "0002_regular_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1768937157940,
+      "tag": "0003_charming_cerise",
+      "breakpoints": true
     }
   ]
 }
